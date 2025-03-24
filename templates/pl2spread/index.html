@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>Pl2Spread - Home</title>
+  </head>
+  <body>
+    <p><strong>Playlist 2 Spreadsheet</strong></p>
+    <p>paste playlist link here or <a href="http://www.spotify.com">log in</a> with spotify.</p>
+    <form action="/" method="get">
+        <fieldset>
+            <input type="text" id="py_link">
+        </fieldset>
+        <input type="submit" value="Preview">
+        <!-->
+        <fieldset>
+            <legend><h1>what to include in spreadsheet</h1></legend>
+            {% for field in all_field_names %}
+            <input type="checkbox" name="field" id="field{{ forloop.counter }}" value="{{ field }}">
+            <label for="field{{ forloop.counter }}">{{ field }}</label><br>
+            {% endfor %}
+        </fieldset>
+        <!-->
+    </form>
+  </body>
+</html>

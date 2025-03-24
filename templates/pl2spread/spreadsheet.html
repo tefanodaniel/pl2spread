@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title> Playlist title </title>
+</head>
+<body>
+    <h1>Playlist title</h1>
+    
+    <table>
+        <tr>
+            {% for field in field_list %}
+                <th>{{field}}</th>
+            {% endfor %}
+        </tr>
+        
+        {% for entry in table_entries %}
+        <tr>
+            {% for field in entry %}
+            <td>{{field}}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+        
+    </table>
+</body>
+</html>
