@@ -6,22 +6,22 @@
 </head>
 <body>
     <h1>Playlist title</h1>
-    
+
     <table>
         <tr>
-            {% for field in field_list %}
+            {% for field in table_headers %}
                 <th>{{field}}</th>
             {% endfor %}
         </tr>
-        
+
         {% for entry in table_entries %}
         <tr>
-            {% for field in entry %}
-            <td>{{field}}</td>
+            {% for field, value in entry.items %}
+            <td>{{value}}</td>
             {% endfor %}
         </tr>
         {% endfor %}
-        
+
     </table>
 </body>
 </html>

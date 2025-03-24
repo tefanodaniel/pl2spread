@@ -32,12 +32,13 @@ def spreadsheet(request, py_url):
         'song_popularity'
     }
 
-    p = Playlist2Spreadsheet()
+    p = Playlist2Spreadsheet(py_url)
 
-    table_entries = p.scrape_playlist(py_url)
+    table_entries = p.write_data_to_file()
 
     context = {
         "field_list": all_field_names,
-        "table_entries": table_entries
+        "table_headers": table_entries[0]
+        "table_entries": table_entries[1:]
     }
     return render(request, "pl2spread/spreadsheet.html", context)

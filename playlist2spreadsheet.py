@@ -1,19 +1,30 @@
+def read_secrets_file(filename):
+
+  client_id = ""
+  client_secret = ""
+
+  with open(filename, 'r') as file:
+      # Read the file line by line
+      lines = file.readlines()
+      for line in lines:
+        line = line.strip()
+        if line.find("client_id") != -1:
+          client_id = line[line.find("client_id")+len("client_id")+1:]
+        if line.find("client_secret") != -1:
+          client_secret = line[line.find("client_secret")+len("client_secret")+1:]
+
+  return (client_id, client_secret)
+
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import json
 import requests
 import csv
-from pprint import pprint
-
-"""
-Some utility functions.
-"""
 
 class Playlist2Spreadsheet:
 
   MAX_BUFFER_SIZE = 50
 
-  def __init__(self, client_id="5469d6f0530444b094b670becf1ea407", client_secret="5b86a619674f4473a522c8bbcdb9c557"):
+  def __init__(self, playlist_id, client_id="5469d6f0530444b094b670becf1ea407", client_secret="5b86a619674f4473a522c8bbcdb9c557"):
 
     self.client_id = client_id
     self.client_secret = client_secret
@@ -23,6 +34,7 @@ class Playlist2Spreadsheet:
     self.access_token = ""
     self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.client_id,
                                                            client_secret=self.client_secret))
+    self.model = self.load_model(playlist_id)
 
   def api_get_artists(self, artists):
 
@@ -153,37 +165,42 @@ class Playlist2Spreadsheet:
 
         model.append(t["track"])
 
-  def write_data_to_file(self, data, filename):
 
-      with open(filename, 'w', newline='') as csvfile:
-          fieldnames = ['track_title', 'artist_name', 'album_title', 'release_year', 'artist_genres', 'artist_popularity', 'song_popularity'] # add fields
-          writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-          writer.writeheader()
-          for track in data:
+  def write_data_to_file(self, filename=""):
 
-              title = track["name"]
-              artists = ",".join([a["name"] for a in track["artists"]])
-              release_year = track["album"]["release_date"]
-              album_title = track["album"]["name"]
+      output = []
+      output.append({"track_title": str(),'artist_name': str(),'album_title': str(),'release_year': str(), 'artist_genres': str(), 'artist_popularity': str(), "song_popularity": str()})
+      for track in self.model:
+            title = track["name"]
+            artists = ";".join([a["name"] for a in track["artists"]])
+            release_year = track["album"]["release_date"]
+            album_title = track["album"]["name"]
 
-              a_genres = set()
-              for a in track["artists"]:
-                for g in a["genres"]:
-                  a_genres.add(g)
+            a_genres = set()
+            for a in track["artists"]:
+              for g in a["genres"]:
+                a_genres.add(g)
 
-              artist_genres = ",".join(a_genres)
+            artist_genres = ";".join(a_genres)
+            artist_popularity = ";".join([str(a["popularity"]) for a in track["artists"]])
+            song_popularity = track["popularity"]
 
+            track_row = {"track_title": title, 'artist_name': artists, 'album_title': album_title,
+                        'release_year': release_year, 'artist_genres': artist_genres, 'artist_popularity': artist_popularity,
+                        "song_popularity": song_popularity}
+            output.append(track_row)
 
-              artist_popularity = ",".join([str(a["popularity"]) for a in track["artists"]])
-              song_popularity = track["popularity"]
+      if filename != "":
+        with open(filename, 'w', newline='') as csvfile:
+            fieldnames = ["track_title",'artist_name','album_title','release_year', 'artist_genres', 'artist_popularity', "song_popularity"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in output:
+              writer.writerow(row)
 
-              data_row = {"track_title": title, 'artist_name': artists, 'album_title': album_title,
-                          'release_year': release_year, 'artist_genres': artist_genres, 'artist_popularity': artist_popularity,
-                          "song_popularity": song_popularity }
+      return output
 
-              writer.writerow(data_row)
-
-  def scrape_playlist(self, playlist_id, fields_=[], filename=""):
+  def load_model(self, playlist_id):
 
       offset = 0
       model = []
@@ -204,8 +221,4 @@ class Playlist2Spreadsheet:
 
           offset = offset + len(response['items'])
           print(offset, "/", response['total'])
-
-      if filename != "":
-        self.write_data_to_file(model, filename)
-
       return model
