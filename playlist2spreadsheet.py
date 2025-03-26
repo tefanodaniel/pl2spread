@@ -35,6 +35,7 @@ class Playlist2Spreadsheet:
     self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.client_id,
                                                            client_secret=self.client_secret))
     self.model = self.load_model(playlist_id)
+    self.fields = []
 
   def api_get_artists(self, artists):
 
@@ -166,45 +167,49 @@ class Playlist2Spreadsheet:
         model.append(t["track"])
 
 
-  def write_data_to_file(self, filename=""):
+  def write_data_to_file(self, filename="", fieldlist=[]):
+      if (len(fieldlist) == 0):
+        fieldlist = ["track_title",'artist_name','album_title','release_year','artist_genres','artist_popularity',"song_popularity"]
 
-      output = []
-      output.append({"track_title": str(),'artist_name': str(),'album_title': str(),'release_year': str(), 'artist_genres': str(), 'artist_popularity': str(), "song_popularity": str()})
+      data = []
+      data.append({"fields": fieldlist}) # First entry in data object is dict of fieldnames
+
       for track in self.model:
-            title = track["name"]
-            artists = ";".join([a["name"] for a in track["artists"]])
-            release_year = track["album"]["release_date"]
-            album_title = track["album"]["name"]
-
+          tr = {}
+          if "track_title" in fieldlist:
+            tr["track_title"] = track["name"]
+          if "artist_name" in fieldlist:
+            tr["artist_name"] = ";".join([a["name"] for a in track["artists"]])
+          if "album_title" in fieldlist:
+            tr["album_title"] = track["album"]["name"]
+          if "release_year" in fieldlist:
+            tr["release_year"] = track["album"]["release_date"]
+          if "artist_genres" in fieldlist:
             a_genres = set()
             for a in track["artists"]:
               for g in a["genres"]:
                 a_genres.add(g)
-
-            artist_genres = ";".join(a_genres)
-            artist_popularity = ";".join([str(a["popularity"]) for a in track["artists"]])
-            song_popularity = track["popularity"]
-
-            track_row = {"track_title": title, 'artist_name': artists, 'album_title': album_title,
-                        'release_year': release_year, 'artist_genres': artist_genres, 'artist_popularity': artist_popularity,
-                        "song_popularity": song_popularity}
-            output.append(track_row)
+            tr["artist_genres"] = ";".join(a_genres)
+          if "artist_popularity" in fieldlist:
+            tr["artist_popularity"] = ";".join([str(a["popularity"]) for a in track["artists"]])
+          if "song_popularity" in fieldlist:
+            tr["song_popularity"] = track["popularity"]
+          data.append(tr)
 
       if filename != "":
         with open(filename, 'w', newline='') as csvfile:
-            fieldnames = ["track_title",'artist_name','album_title','release_year', 'artist_genres', 'artist_popularity', "song_popularity"]
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer = csv.DictWriter(csvfile, fieldnames=fieldlist)
             writer.writeheader()
-            for row in output:
+            for row in data[1:]:
               writer.writerow(row)
 
-      return output
+      return data
 
   def load_model(self, playlist_id):
 
       offset = 0
       model = []
-
+      fields = []
       while True:
 
           # Get base information about a set of tracks
