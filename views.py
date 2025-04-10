@@ -26,14 +26,12 @@ def index(request):
 def create_spreadsheet(request):
 
     playlist_url = request.POST["playlist_url"]
-
     response =  HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": playlist_url}))
 
     for field, value in request.POST.items():
+        if field not in request.COOKIES or value != request.COOKIES[field]:
             response.set_cookie(field, value)
-
     return response
-
 
 def spreadsheet(request, py_url):
 
@@ -42,9 +40,9 @@ def spreadsheet(request, py_url):
         if field != "playlist_url" or "csrftoken" or "csrfmiddlewaretoken":
             fields.append(value)
 
-    p = Playlist2Spreadsheet(py_url)
+    p = Playlist2Spreadsheet()
 
-    table_entries = p.write_data_to_file(fieldlist=fields)
+    table_entries = p.export(py_url, filename="", fieldlist=fields)
 
     context = {
         "table_headers": table_entries[0],
