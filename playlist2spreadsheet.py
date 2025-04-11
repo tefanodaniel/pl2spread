@@ -37,24 +37,37 @@ class Playlist2Spreadsheet:
                                                            client_secret=self.client_secret))
     self.access_token = ""
 
+
+  """
+  Main class function. Gets list of Tracks in Spotify playlist with the playlist id provided.
+  """
   def get_items(self, playlist_id):
 
       items = []
       offset = 0
-      while True:
+      while True: # Request list of Tracks on playlist from Spotify API
           response = self.sp.playlist_items(playlist_id,
                                       offset=offset,
                                       fields='items.track(name,artists(name,id),album(name,release_date),popularity),total',
                                       additional_types=['track'])
           if len(response['items']) == 0:
               break
-
+          # Before storing the Tracks, fetch some additional information about Artists from the Spotify API
           self.update_tr_metadata(items, response["items"])
           offset = offset + len(response['items'])
           # print(offset, "/", response['total'])
       return items
 
+  """
+  Gets additional metadata and stores it in case playlist contains multiple songs by same artists.
+
+  Additional info:
+      artist genres
+      artist popularity
+
+  """
   def update_tr_metadata(self, model, tracks):
+
       ids = []
       for t in tracks:
           for a in t["track"]["artists"]:
@@ -85,9 +98,10 @@ class Playlist2Spreadsheet:
               print("ERROR -- Cache malfunction! Unable to find artist information post-reload.")
               a["genres"] = []
               a["popularity"] = []
-        model.append(t["track"])
+
 
   def artists_info_from_api(self, artists):
+
       artists_string = ""
       if len(artists) > 1:
         artists_string = ",".join(artists)
