@@ -6,5 +6,5 @@ app_name = "pl2spread"
 urlpatterns = [
     path("", views.index, name="index"),
     path("spreadsheet", views.create_spreadsheet, name="create_spreadsheet"),
-    path("spreadsheet/<str:py_url>/", views.spreadsheet, name="spreadsheet")
+    path("spreadsheet/<str:py_url>/<str:params>/", views.spreadsheet, name="spreadsheet")
 ]
