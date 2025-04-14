@@ -1,5 +1,7 @@
 <!doctype html>
 <html lang="en-US">
+  {% load static %}
+  <script src="{% static 'pl2spread/script.js' %}"></script>
   <head>
     <meta charset="utf-8" />
     <title>Pl2Spread - Home</title>
@@ -10,10 +12,12 @@
         <fieldset>
             <legend><h1>Playlist 2 Spreadsheet</h1></legend>
             <label for="playlist_url">paste playlist link here</label><br>
-            <input type="text" name="playlist_url" id="playlist_url"><br>
+            <input type="text" name="playlist_url" id="playlist_url" required><br>
+            <input type="checkbox" name="track_title" id="field_0" value="track_title" checked disabled>
+            <label for="field_0">track_title</label><br>
             {% for field in all_field_names %}
-            <input type="checkbox" name="{{field}}" id="field_{{ forloop.counter }}" value="{{field}}">
-            <label for="field_{{ forloop.counter }}">{{ field }}</label><br>
+            <input type="checkbox" name="{{field}}" id="field_{{ forloop.counter|add:"1" }}" value="{{field}}">
+            <label for="field_{{ forloop.counter|add:"1" }}">{{ field }}</label><br>
             {% endfor %}
         </fieldset>
         <input type="submit" value="Preview">

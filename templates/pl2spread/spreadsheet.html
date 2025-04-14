@@ -2,18 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title> Playlist title </title>
+    <title>Playlist title</title>
 </head>
 <body>
     <h1>Playlist title</h1>
-
     <table>
         <tr>
             {% for field in table_headers %}
                 <th>{{field}}</th>
             {% endfor %}
         </tr>
-
         {% for entry in table_entries %}
         <tr>
             {% for field, value in entry.items %}
@@ -21,7 +19,6 @@
             {% endfor %}
         </tr>
         {% endfor %}
-
     </table>
 </body>
 </html>

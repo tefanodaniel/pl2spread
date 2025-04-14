@@ -1,10 +1,11 @@
 from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.urls import reverse
-import logging
+import logging, re
 
 from pl2spread.playlist2spreadsheet import Playlist2Spreadsheet
 
+# 0th FIELD ALWAYS TRACK_TITLE
 all_field_names = [
         'track_title',
         'artist_name',
@@ -18,17 +19,29 @@ all_field_names = [
 def index(request):
 
     context = {
-        "all_field_names": all_field_names
+        "all_field_names": all_field_names[1:]
     }
     return render(request, "pl2spread/index.html", context)
 
 def create_spreadsheet(request):
-    params = ""
+
+
+    py_url = ""
+    field_value = request.POST["playlist_url"]
+    r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
+    m = r.match(field_value)
+    if m:
+        py_url = m.group(1)
+    else:
+        #raise Http404("Not a valid URL to a Spotify playlist.")
+        return HttpResponse("Not a valid URL to a Spotify playlist. (%s)" % field_value)
+
+    params = "" + f"track_title={all_field_names[0]}?"
     for k,v in request.POST.items():
         if k not in ["playlist_url", "csrftoken", "csrfmiddlewaretoken"]:
             params += k + "=" + v + "?"
 
-    response = HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": request.POST["playlist_url"], "params": params}))
+    response = HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": py_url, "params": params}))
     return response
 
 def spreadsheet(request, py_url, params):
