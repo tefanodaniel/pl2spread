@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.urls import reverse
+from django.db import models
+from django.conf import settings
 import logging, re
 
 from pl2spread.playlist2spreadsheet import Playlist2Spreadsheet
@@ -25,11 +27,10 @@ def index(request):
 
 def create_spreadsheet(request):
 
-
-    py_url = ""
     field_value = request.POST["playlist_url"]
     r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
     m = r.match(field_value)
+    py_url = ""
     if m:
         py_url = m.group(1)
     else:
@@ -48,10 +49,18 @@ def spreadsheet(request, py_url, params):
     fields=[]
     for kv in params.split("?"): # key=value
         fields.append(kv.split("=")[0])
+
+    filepath = f"pl2spread/tmp/data-{py_url}.csv"
     p = Playlist2Spreadsheet()
-    table_entries = p.export(py_url, filename="", fieldlist=fields)
+    playlist = p.export(py_url, filename=f"{settings.STATIC_ROOT}/{filepath}", fieldlist=fields)
     context = {
-        "table_headers": table_entries[0],
-        "table_entries": table_entries[1:]
+        "playlist_info": playlist["metadata"],
+        "table_headers": playlist["data"][0]["fields"],
+        "table_entries": playlist["data"][1:],
+        "filepath": filepath
     }
     return render(request, "pl2spread/spreadsheet.html", context)
+
+def download(request):
+    return
+    #return FileResponse(openfile, "as_attachment"=True, filename=)

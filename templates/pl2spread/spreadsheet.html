@@ -2,10 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Playlist title</title>
+    <title>Pl2Spread - {{playlist_info.name}} by {{playlist_info.owner_display_name}}</title>
 </head>
 <body>
-    <h1>Playlist title</h1>
+    <h1>Playlist2Spreadsheet</h1>
+    <p>Playlist title: {{playlist_info.name}} // Created by: {{playlist_info.owner_display_name}} // Total tracks: {{playlist_info.total_tracks}}.</p>
+    {% load static %}
+    <a href="{% static filepath %}" download><button type="button">Download data as .CSV</button></a>
     <table>
         <tr>
             {% for field in table_headers %}

@@ -32,7 +32,6 @@ class Playlist2Spreadsheet:
   cached = {"artists": dict() } # { "artists": {"id": {name: string, genres: string[], popularity: int }}}
 
   def __init__(self):
-
     self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.client_id,
                                                            client_secret=self.client_secret))
     self.access_token = ""
@@ -42,20 +41,19 @@ class Playlist2Spreadsheet:
   Main class function. Gets list of Tracks in Spotify playlist with the playlist id provided.
   """
   def get_items(self, playlist_id):
-
       items = []
       offset = 0
       while True: # Request list of Tracks on playlist from Spotify API
-          response = self.sp.playlist_items(playlist_id,
+          playlist_items = self.sp.playlist_items(playlist_id,
                                       offset=offset,
                                       fields='items.track(name,artists(name,id),album(name,release_date),popularity),total',
                                       additional_types=['track'])
-          if len(response['items']) == 0:
+          if len(playlist_items['items']) == 0:
               break
           # Before storing the Tracks, fetch some additional information about Artists from the Spotify API
-          self.update_tr_metadata(items, response["items"])
-          offset = offset + len(response['items'])
-          # print(offset, "/", response['total'])
+          self.update_tr_metadata(items, playlist_items["items"])
+          offset = offset + len(playlist_items['items'])
+          # print(offset, "/", playlist_items['total'])
       return items
 
   """
@@ -155,13 +153,20 @@ class Playlist2Spreadsheet:
             result[i["id"]] = {"name": i["name"], "genres": i["genres"], "popularity": i["popularity"]}
       return result
 
+  class Playlist:
+      def __init__(self, data=[], metadata={}):
+          self.data = data
+          self.metadata = metadata
+
   def export(self, playlist_id: str, filename="", fieldlist=[]):
+
+      playlist = {"data": [], "metadata": {}}
+
       if (len(fieldlist) == 0):
         fieldlist = ["track_title",'artist_name','album_title','release_year','artist_genres','artist_popularity',"song_popularity"]
+      playlist["data"].append({"fields": fieldlist}) # First entry in data object is dict of fieldnames
 
       items = self.get_items(playlist_id)
-      data = []
-      data.append({"fields": fieldlist}) # First entry in data object is dict of fieldnames
       for track in items:
           tr = {}
           if "track_title" in fieldlist:
@@ -182,15 +187,23 @@ class Playlist2Spreadsheet:
             tr["artist_popularity"] = ";".join([str(a["popularity"]) for a in track["artists"]])
           if "song_popularity" in fieldlist:
             tr["song_popularity"] = track["popularity"]
-          data.append(tr)
+          playlist["data"].append(tr)
+
       del items
+
+      response = self.sp.playlist(playlist_id, fields="tracks.total,name,owner.display_name")
+      playlist["metadata"]["total_tracks"] = response["tracks"]["total"]
+      playlist["metadata"]["name"] = response["name"]
+      playlist["metadata"]["owner_display_name"] = response["owner"]["display_name"]
+
       if filename != "":
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldlist)
             writer.writeheader()
-            for row in data[1:]:
+            for row in playlist["data"][1:]:
               writer.writerow(row)
-      return data
+
+      return playlist
 
 if __name__ == "__main__":
     short_tp = 'spotify:playlist:7wtTPHDLubKGXneN0E45iH'
