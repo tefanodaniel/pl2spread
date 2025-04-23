@@ -4,6 +4,8 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import logging
 
+logger = logging.getLogger() # make errors go here
+
 def read_secrets_file(filename):
 
   client_id = ""
@@ -37,7 +39,7 @@ class Playlist2Spreadsheet:
   """
   Main class function. Gets list of Tracks in Spotify playlist with the playlist id provided.
   """
-  def get_items(self, playlist_id):
+  def tracks_list(self, playlist_id):
       items = []
       offset = 0
       while True: # Request list of Tracks on playlist from Spotify API
@@ -46,30 +48,32 @@ class Playlist2Spreadsheet:
                                           offset=offset,
                                           fields='items.track(name,artists(name,id),album(name,release_date),popularity),total',
                                           additional_types=['track'])
-          except spotipy.SpotifyOauthError as err:
-              # do something
-              return []
+
+          except spotipy.SpotifyOauthError as err: # possible
+              raise spotipy.SpotifyOauthError(err.message, err.error, err.error_description)
+
           except spotipy.SpotifyException as err:
-              # do something different
-              return []
+              raise spotipy.SpotifyException(err.http_status, err.code, err.msg, err.reason)
+
           else:
               if len(playlist_items['items']) == 0:
                   break
 
-              self.update_tr_metadata(items, playlist_items["items"])
+              self.get_additional_track_metadata(items, playlist_items["items"])
+
               offset = offset + len(playlist_items['items']) # print(offset, "/", playlist_items['total'])
 
       return items
 
   """
-  Gets additional metadata and stores it in case playlist contains multiple songs by same artists.
+  Gets additional metadata from API and caches it for later use.
 
   Additional info:
       artist genres
       artist popularity
 
   """
-  def update_tr_metadata(self, model, tracks):
+  def get_additional_track_metadata(self, model, tracks):
 
       ids = []
       for t in tracks:
@@ -166,7 +170,8 @@ class Playlist2Spreadsheet:
         fieldlist = ["track_title",'artist_name','album_title','release_year','artist_genres','artist_popularity',"song_popularity"]
       playlist["data"].append({"fields": fieldlist}) # First entry in data object is dict of fieldnames
 
-      items = self.get_items(playlist_id)
+      items = self.tracks_list(playlist_id)
+
       for track in items:
           tr = {}
           if "track_title" in fieldlist:
