@@ -5,7 +5,7 @@ from django.db import models
 from django.conf import settings
 import logging, re
 
-from pl2spread.playlist2spreadsheet import Playlist2Spreadsheet
+from pl2spread.playlist2spreadsheet import Playlist2Spreadsheet, read_secrets_file
 
 # 0th FIELD ALWAYS TRACK_TITLE
 all_field_names = [
@@ -51,7 +51,8 @@ def spreadsheet(request, py_url, params):
         fields.append(kv.split("=")[0])
 
     filepath = f"pl2spread/tmp/data-{py_url}.csv"
-    p = Playlist2Spreadsheet()
+    client_id, client_secret = read_secrets_file("/home/tefanodaniel/mysite/pl2spread/secrets.txt")
+    p = Playlist2Spreadsheet(client_id, client_secret)
     playlist = p.export(py_url, filename=f"{settings.STATIC_ROOT}/{filepath}", fieldlist=fields)
     context = {
         "playlist_info": playlist["metadata"],
@@ -60,7 +61,3 @@ def spreadsheet(request, py_url, params):
         "filepath": filepath
     }
     return render(request, "pl2spread/spreadsheet.html", context)
-
-def download(request):
-    return
-    #return FileResponse(openfile, "as_attachment"=True, filename=)

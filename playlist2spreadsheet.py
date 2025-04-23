@@ -2,8 +2,7 @@ import requests, csv
 from pprint import pprint
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-# import models
-# import db
+import logging
 
 def read_secrets_file(filename):
 
@@ -26,16 +25,14 @@ class Playlist2Spreadsheet:
 
   MAX_BUFFER_SIZE = 50
 
-  client_id= "5469d6f0530444b094b670becf1ea407"
-  client_secret= "5b86a619674f4473a522c8bbcdb9c557"
-
   cached = {"artists": dict() } # { "artists": {"id": {name: string, genres: string[], popularity: int }}}
 
-  def __init__(self):
-    self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=self.client_id,
-                                                           client_secret=self.client_secret))
+  def __init__(self, client_id, client_secret):
+    self.sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id,
+                                                           client_secret=client_secret))
+    self.client_id = client_id
+    self.client_secret = client_secret
     self.access_token = ""
-
 
   """
   Main class function. Gets list of Tracks in Spotify playlist with the playlist id provided.
@@ -44,16 +41,24 @@ class Playlist2Spreadsheet:
       items = []
       offset = 0
       while True: # Request list of Tracks on playlist from Spotify API
-          playlist_items = self.sp.playlist_items(playlist_id,
-                                      offset=offset,
-                                      fields='items.track(name,artists(name,id),album(name,release_date),popularity),total',
-                                      additional_types=['track'])
-          if len(playlist_items['items']) == 0:
-              break
-          # Before storing the Tracks, fetch some additional information about Artists from the Spotify API
-          self.update_tr_metadata(items, playlist_items["items"])
-          offset = offset + len(playlist_items['items'])
-          # print(offset, "/", playlist_items['total'])
+          try:
+              playlist_items = self.sp.playlist_items(playlist_id,
+                                          offset=offset,
+                                          fields='items.track(name,artists(name,id),album(name,release_date),popularity),total',
+                                          additional_types=['track'])
+          except spotipy.SpotifyOauthError as err:
+              # do something
+              return []
+          except spotipy.SpotifyException as err:
+              # do something different
+              return []
+          else:
+              if len(playlist_items['items']) == 0:
+                  break
+
+              self.update_tr_metadata(items, playlist_items["items"])
+              offset = offset + len(playlist_items['items']) # print(offset, "/", playlist_items['total'])
+
       return items
 
   """
@@ -153,11 +158,6 @@ class Playlist2Spreadsheet:
             result[i["id"]] = {"name": i["name"], "genres": i["genres"], "popularity": i["popularity"]}
       return result
 
-  class Playlist:
-      def __init__(self, data=[], metadata={}):
-          self.data = data
-          self.metadata = metadata
-
   def export(self, playlist_id: str, filename="", fieldlist=[]):
 
       playlist = {"data": [], "metadata": {}}
@@ -191,10 +191,15 @@ class Playlist2Spreadsheet:
 
       del items
 
-      response = self.sp.playlist(playlist_id, fields="tracks.total,name,owner.display_name")
-      playlist["metadata"]["total_tracks"] = response["tracks"]["total"]
-      playlist["metadata"]["name"] = response["name"]
-      playlist["metadata"]["owner_display_name"] = response["owner"]["display_name"]
+      try:
+          response = self.sp.playlist(playlist_id, fields="tracks.total,name,owner.display_name")
+      except spotipy.SpotifyException as err:
+          # do something
+          pass
+      else:
+          playlist["metadata"]["total_tracks"] = response["tracks"]["total"]
+          playlist["metadata"]["name"] = response["name"]
+          playlist["metadata"]["owner_display_name"] = response["owner"]["display_name"]
 
       if filename != "":
         with open(filename, 'w', newline='') as csvfile:
