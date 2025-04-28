@@ -78,7 +78,7 @@ def spreadsheet(request, py_url, params):
     else:
         context = {
             "playlist_info": playlist["metadata"],
-            "table_headers": playlist["data"][0]["fields"],
+            "table_headers": playlist["data"][0]["fields"][:-1], # getting an empty item for an additional entry in the table headers list... hacky fix
             "table_entries": playlist["data"][1:],
             "filepath": filepath
         }

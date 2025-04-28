@@ -1,27 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link href="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.2.2/sr-1.4.1/datatables.min.css" rel="stylesheet" integrity="sha384-AYiv7heOUA9cEt8LmdeNfLDruFr2eb0HBfctbcWGPPC+DgXTDDFzd3zOLZChFN8t" crossorigin="anonymous">
+    <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.2.2/sr-1.4.1/datatables.min.js" integrity="sha384-nZ4+wxmMjWsISK2rNwTc6mx5RTNS617XsZuGyZud4ti2rwNybTGbev8uMofAx9I5" crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <title>Pl2Spread - {{playlist_info.name}} by {{playlist_info.owner_display_name}}</title>
 </head>
 <body>
     <h1>Playlist2Spreadsheet</h1>
-    <p>Playlist title: {{playlist_info.name}} // Created by: {{playlist_info.owner_display_name}} // Total tracks: {{playlist_info.total_tracks}}.</p>
+
     {% load static %}
-    <a href="{% static filepath %}" download><button type="button">Download data as .CSV</button></a>
-    <table>
-        <tr>
-            {% for field in table_headers %}
+    <p>Playlist title: {{playlist_info.name}} // Created by: {{playlist_info.owner_display_name}} // Total tracks: {{playlist_info.total_tracks}}.
+        <a href="{% static filepath %}" download><button type="button">Download as .CSV</button></a></p>
+
+    <table id="playlist" class="display" style="width=100%">
+        <thead>
+            <tr>
+                {% for field in table_headers %}
                 <th>{{field}}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in table_entries %}
+            <tr>
+                {% for field, value in entry.items %}
+                <td>{{value}}</td>
+                {% endfor %}
+            </tr>
             {% endfor %}
-        </tr>
-        {% for entry in table_entries %}
-        <tr>
-            {% for field, value in entry.items %}
-            <td>{{value}}</td>
-            {% endfor %}
-        </tr>
-        {% endfor %}
+        </tbody>
     </table>
+
+    <script>
+        new DataTable('#playlist');
+    </script>
 </body>
 </html>
