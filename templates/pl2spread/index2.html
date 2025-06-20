@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>tefanodaniel</title>
+</head>
+<body>
+    <h2>tefanodaniel's tools for Spotify</h2>
+
+    <ul id='sitetoollist'>
+        <li>
+            <p>Shuffle Playlist:   Returns a playlist with items re-arranged in a random order.</p></li>
+        <li>
+            <p>(Playlist) Order by Artist name and Album:   Returns a playlist with items sorted by artist name, grouping songs from the same album together.</p></li>
+        <li>
+            <p>(Playlist) Order by Artist name:   Returns a playlist with items sorted by artist name.</p></li>
+        <li>
+            <p>View playlist contents as CSV</p></li>
+    </ul>
+
+    <form name="pl2spread_toolsform" action="{% url 'pl2spread:complete_action' %}" method="post">
+        {% csrf_token %}
+        <label for="playlist_url">Spotify playlist link&#9;</label>
+        <input type="text" name="playlist_url" id="playlist_url" required
+            value="https://open.spotify.com/playlist/6HH3ypeMQxI6QEWNwxk5NJ" style ="width: 440px"><br>
+        <label for="action">Choose an action:</label>
+        <select name="action" id="tool-action" required>
+            <option value="shuffle">Shuffle playlist</option>
+            <option value="order-artistalbum">Order by Artistname and Album</option>
+            <option value="order-artist">Order by Artistname</option>
+            <option value="create-csv">Create .CSV</option>
+        </select>
+        <input type="submit" value="Go">
+    </form>
+
+</body>
+</html>
+

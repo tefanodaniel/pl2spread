@@ -7,6 +7,7 @@ from spotipy import SpotifyException as SpotifyException
 import re
 
 from pl2spread.playlist2spreadsheet import Playlist2Spreadsheet, read_secrets_file
+from pl2spread.manageplaylist import ManagePlaylist
 
 # 0th FIELD ALWAYS TRACK_TITLE
 all_field_names = [
@@ -25,6 +26,74 @@ def index(request):
         "all_field_names": all_field_names[1:]
     }
     return render(request, "pl2spread/index.html", context)
+
+
+def tools(request):
+
+    context = {}
+    return render(request, "pl2spread/index2.html", context)
+
+def tools_op(request, op_success):
+
+    if op_success != "":
+        context = {
+            "operation": "example",
+            "success": "yes"
+        }
+    else:
+        context={}
+
+    return render(request, "pl2spread/index2.html", context)
+
+def complete_action(request):
+
+    if len(request.POST) == 0:
+        return Http404("No data submitted to the server. Try submitting the form again!")
+
+    try:
+        playlist_url = request.POST["playlist_url"]
+        r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
+        m = r.match(field_value)
+        py_url = ""
+        if m:
+            py_url = m.group(1)
+        else:
+            return HttpResponse("Not a valid URL to a Spotify playlist. (%s)" % field_value)
+
+        action = request.POST["action"]
+
+        if action == "shuffle":
+
+            result = ManagePlaylist.shuffle_playlist(py_url)
+            if result:
+                return HttpResponse("Successfully sorted playlist by artist name and album.")
+                # return HttpResponseRedirect(reverse("pl2spread:tools", kwargs={"opsuccess": result}))
+            else:
+                raise Exception("No luck.")
+
+        elif action == "order-artistalbum":
+
+            result = ManagePlaylist.sort_playlist_artistalbum(py_url)
+            if result:
+                return HttpResponse("Successfully sorted playlist by artist name and album.")
+            else:
+                raise Exception("No luck.")
+
+        elif action == "order-artist":
+
+            result = ManagePlaylist.sort_playlist_artist(py_url)
+            if result:
+                return HttpResponse("Successfully sorted playlist by artist name.")
+            else:
+                raise Exception("No luck.")
+        else:
+            return HttpResponse("No tool action selected before form submission.")
+
+
+    except Exception as err:
+        return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
+
+    return render(request, "pl2spread/action_redirect.html", context)
 
 def create_spreadsheet(request):
 
@@ -50,7 +119,7 @@ def create_spreadsheet(request):
         return HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": py_url, "params": params}))
 
     except Exception as err:
-        return HttpResponse("Apologies for the inconvenience, an error has occurred with the application.")
+        return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
 
 def spreadsheet(request, py_url, params):
 
@@ -73,7 +142,7 @@ def spreadsheet(request, py_url, params):
         return HttpResponse("We experienced a back-end systems error when accessing the Spotify application.")
 
     except Exception as err:
-        return HttpResponse("Apologies for the inconvenience, an error has occurred with the application.")
+        return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
 
     else:
         context = {
