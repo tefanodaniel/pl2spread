@@ -2,12 +2,26 @@ from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.urls import reverse
 from django.conf import settings
+
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 from spotipy import SpotifyOauthError as SpotifyOauthError
 from spotipy import SpotifyException as SpotifyException
+from spotipy.cache_handler import DjangoSessionCacheHandler
+
+import logging
+from datetime import datetime
+import random
+import string
 import re
 
+import requests
+
 from pl2spread.playlist2spreadsheet import Playlist2Spreadsheet, read_secrets_file
-from pl2spread.manageplaylist import ManagePlaylist
+import pl2spread.manageplaylist as ManagePlaylist
+
+#logger = logging.getLogger("pl2spread.views")
+django = logging.getLogger("django")
 
 # 0th FIELD ALWAYS TRACK_TITLE
 all_field_names = [
@@ -20,79 +34,98 @@ all_field_names = [
         'song_popularity'
     ]
 
-def index(request):
+def generate_random_string(length):
+    characters = string.ascii_letters + string.digits  # Letters and digits
+    return ''.join(random.choices(characters, k=length))
 
+def spotify_oauth2(request): # utility function - not a view
+
+    scopes = "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public"
+
+    oauth = SpotifyOAuth(client_id=ManagePlaylist.client_id,
+                                client_secret=ManagePlaylist.client_secret,
+                                redirect_uri=ManagePlaylist.REDIRECT_URI,
+                                scope=scopes,
+                                cache_handler=DjangoSessionCacheHandler(request))
+    return oauth
+
+def spotify_login(request):
+    auth_url = spotify_oauth2(request).get_authorize_url()
+    return HttpResponseRedirect(auth_url)
+
+def spotify_callback(request):
+    try:
+        code = request.GET["code"]
+        auth_manager = spotify_oauth2(request).get_access_token(code)
+        django.debug(str(request.session))
+        return HttpResponseRedirect(reverse("pl2spread:index")) # POST successful login attempt to INDEX - pl2spread
+
+    except KeyError as KE:
+        django.debug(KE)
+        return Http404("Authentication failed.")
+
+def index(request):
     context = {
-        "all_field_names": all_field_names[1:]
+        "all_field_names": all_field_names[1:],
     }
+
     return render(request, "pl2spread/index.html", context)
 
-
-def tools(request):
-
-    context = {}
-    return render(request, "pl2spread/index2.html", context)
-
-def tools_op(request, op_success):
-
-    if op_success != "":
-        context = {
-            "operation": "example",
-            "success": "yes"
-        }
-    else:
-        context={}
-
-    return render(request, "pl2spread/index2.html", context)
-
+# Handles tools requests and redirects to main tools page.
 def complete_action(request):
 
+    # Validate request parameters
     if len(request.POST) == 0:
         return Http404("No data submitted to the server. Try submitting the form again!")
-
     try:
-        playlist_url = request.POST["playlist_url"]
+        django.debug(str(request.session))
+
+        auth_manager = spotify_oauth2(request)
+
+        django.debug(str(request.session))
+
+        posted_url = request.POST["playlist_url"]
         r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
-        m = r.match(field_value)
+        m = r.match(posted_url)
         py_url = ""
         if m:
             py_url = m.group(1)
         else:
-            return HttpResponse("Not a valid URL to a Spotify playlist. (%s)" % field_value)
+            return HttpResponse("Not a valid URL to a Spotify playlist. (%s)" % posted_url)
 
+        # Complete tool action based on request type.
         action = request.POST["action"]
 
+        # (TODO: Should be a switch statement here)
         if action == "shuffle":
-
-            result = ManagePlaylist.shuffle_playlist(py_url)
+            result = ManagePlaylist.shuffle_playlist(auth_manager, py_url)
             if result:
-                return HttpResponse("Successfully sorted playlist by artist name and album.")
-                # return HttpResponseRedirect(reverse("pl2spread:tools", kwargs={"opsuccess": result}))
+                return HttpResponse("Successfully shuffled playlist.")
             else:
-                raise Exception("No luck.")
+                return HttpResponse("Unable to shuffle playlist for some reason.")
 
         elif action == "order-artistalbum":
-
-            result = ManagePlaylist.sort_playlist_artistalbum(py_url)
+            result = ManagePlaylist.sort_playlist_by_artistalbum(auth_manager, py_url)
             if result:
                 return HttpResponse("Successfully sorted playlist by artist name and album.")
-            else:
-                raise Exception("No luck.")
 
         elif action == "order-artist":
-
-            result = ManagePlaylist.sort_playlist_artist(py_url)
+            result = ManagePlaylist.sort_playlist_by_artist(auth_manager, py_url)
             if result:
                 return HttpResponse("Successfully sorted playlist by artist name.")
-            else:
-                raise Exception("No luck.")
+
+        elif action == "create-csv":
+            return create_spreadsheet(auth_manager, request)
+
         else:
             return HttpResponse("No tool action selected before form submission.")
 
-
     except Exception as err:
-        return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
+        django.debug(err)
+        #return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
+        raise err
 
+    context = {}
     return render(request, "pl2spread/action_redirect.html", context)
 
 def create_spreadsheet(request):
