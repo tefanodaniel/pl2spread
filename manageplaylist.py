@@ -6,17 +6,12 @@ import random
 client_id="5469d6f0530444b094b670becf1ea407"
 client_secret="5b86a619674f4473a522c8bbcdb9c557"
 PLAYLIST_MAX_SONG_COUNT=10000
-REDIRECT_URI = "https://tefanodaniel.pythonanywhere.com/pl2spread/authorize/callback"
+redirect_uri = "https://tefanodaniel.pythonanywhere.com/pl2spread/authorize/callback"
 
 # Provides services for music library management and organization in Spotify.
-def dump_playlist_contents(playlistId, indexStart=1, indexEnd=PLAYLIST_MAX_SONG_COUNT):
+def dump_playlist_contents(auth_manager, playlistId, indexStart=1, indexEnd=PLAYLIST_MAX_SONG_COUNT):
 
     try:
-        scopes = "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public"
-        auth_manager = SpotifyOAuth(client_id=client_id,
-                                    client_secret=client_secret,
-                                    redirect_uri=redirect_uri,
-                                    scope=scopes)
         spotify = spotipy.Spotify(auth_manager=auth_manager)
 
         res = spotify.playlist_items(playlistId, fields="next,items(added_at,added_by.id,track(name,href,artists(name,href),show(name,href)")
@@ -28,8 +23,7 @@ def dump_playlist_contents(playlistId, indexStart=1, indexEnd=PLAYLIST_MAX_SONG_
                 playlistTracks.extend(res["items"])
 
         except KeyError:
-            print("Next page of results not found.")
-            pass
+            raise Exception("Next page of results not found.")
 
         info = spotify.playlist(playlistId, fields="tracks.total,name,owner.display_name")
 
@@ -47,9 +41,6 @@ def dump_playlist_contents(playlistId, indexStart=1, indexEnd=PLAYLIST_MAX_SONG_
     except spotipy.SpotifyException as err:
        raise Exception("Whoops. The Spotify client experienced an error.") #spotipy.SpotifyException(err.http_status, err.code, err.msg, err.reason)
 
-    except Exception as err:
-        raise Exception("Whoops. Someting went wong.")
-
     return True
 
 # Returns a playlist with items re-arranged in a random order.
@@ -62,7 +53,6 @@ def shuffle_playlist(auth_manager, playlistId):
 
     try:
         #client_id, client_secret = read_secrets_file("secrets.txt")
-
         spotify = spotipy.Spotify(auth_manager=auth_manager)
 
         res = spotify.playlist_items(playlistId, fields="next,items(track(id))")
@@ -73,8 +63,7 @@ def shuffle_playlist(auth_manager, playlistId):
                 res = spotify.next(res)
                 playlistTracks.extend(res["items"])
         except KeyError:
-            print("Next page of results not found.")
-            pass
+            raise Exception("Next page of results not found.")
 
         if len(playlistTracks) < 1 or len(playlistTracks[0]) < 1:
             return False # unable to retrieve data from Spotify API
@@ -96,9 +85,6 @@ def shuffle_playlist(auth_manager, playlistId):
     except spotipy.SpotifyException as err:
        raise Exception("Whoops. The Spotify client experienced an error.") #spotipy.SpotifyException(err.http_status, err.code, err.msg, err.reason)
 
-    except Exception as err:
-        raise Exception("Whoops. Someting went wong.")
-
     return True
 
 
@@ -106,15 +92,7 @@ def shuffle_playlist(auth_manager, playlistId):
 def sort_playlist_by_artistalbum(auth_manager, playlistId, ascendingTrue=True):
 
     try:
-        client_id="5469d6f0530444b094b670becf1ea407"
-        client_secret="5b86a619674f4473a522c8bbcdb9c557"
-        scopes = "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public"
-        auth_manager = SpotifyOAuth(client_id=client_id,
-                                    client_secret=client_secret,
-                                    redirect_uri=redirect_uri,
-                                    scope=scopes)
         spotify = spotipy.Spotify(auth_manager=auth_manager)
-        playlistTracks = spotify.playlist(playlistId, fields="tracks")["tracks"]
 
         res = spotify.playlist_items(playlistId, fields="next,items(track(id,artists(name),album(name)))")
 
@@ -124,8 +102,7 @@ def sort_playlist_by_artistalbum(auth_manager, playlistId, ascendingTrue=True):
                 res = spotify.next(res)
                 playlistTracks.extend(res["items"])
         except KeyError:
-            print("Next page of results not found.")
-            pass
+            raise Exception("Next page of results not found.")
 
         if len(playlistTracks) < 1 or len(playlistTracks[0]) < 1:
             return False # unable to retrieve data from Spotify API
@@ -154,22 +131,12 @@ def sort_playlist_by_artistalbum(auth_manager, playlistId, ascendingTrue=True):
     except spotipy.SpotifyException as err:
        raise Exception("Whoops. The Spotify client experienced an error.") #spotipy.SpotifyException(err.http_status, err.code, err.msg, err.reason)
 
-    except Exception as err:
-        raise Exception("Whoops. Someting went wong.")
-
     return True
 
 # Returns a playlist with items sorted by artist name
 def sort_playlist_by_artist(auth_manager, playlistId, ascendingTrue=True):
 
     try:
-        client_id="5469d6f0530444b094b670becf1ea407"
-        client_secret="5b86a619674f4473a522c8bbcdb9c557"
-        scopes = "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public"
-        auth_manager = SpotifyOAuth(client_id=client_id,
-                                    client_secret=client_secret,
-                                    redirect_uri=redirect_uri,
-                                    scope=scopes)
         spotify = spotipy.Spotify(auth_manager=auth_manager)
 
         res = spotify.playlist_items(playlistId, fields="next,items(track(id,artists(name)))")
@@ -180,8 +147,7 @@ def sort_playlist_by_artist(auth_manager, playlistId, ascendingTrue=True):
                 res = spotify.next(res)
                 playlistTracks.extend(res["items"])
         except KeyError:
-            print("Next page of results not found.")
-            pass
+            raise Exception("Next page of results not found.")
 
         if len(playlistTracks) < 1 or len(playlistTracks[0]) < 1:
             return False # unable to retrieve data from Spotify API
@@ -209,8 +175,6 @@ def sort_playlist_by_artist(auth_manager, playlistId, ascendingTrue=True):
     except spotipy.SpotifyException as err:
        raise Exception("Whoops. The Spotify client experienced an error.") #spotipy.SpotifyException(err.http_status, err.code, err.msg, err.reason)
 
-    except Exception as err:
-        raise Exception("Whoops. Someting went wong.")
 
     return True
 

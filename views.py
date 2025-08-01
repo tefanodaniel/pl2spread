@@ -44,7 +44,7 @@ def spotify_oauth2(request): # utility function - not a view
 
     oauth = SpotifyOAuth(client_id=ManagePlaylist.client_id,
                                 client_secret=ManagePlaylist.client_secret,
-                                redirect_uri=ManagePlaylist.REDIRECT_URI,
+                                redirect_uri=ManagePlaylist.redirect_uri,
                                 scope=scopes,
                                 cache_handler=DjangoSessionCacheHandler(request))
     return oauth
@@ -57,7 +57,6 @@ def spotify_callback(request):
     try:
         code = request.GET["code"]
         auth_manager = spotify_oauth2(request).get_access_token(code)
-        django.debug(str(request.session))
         return HttpResponseRedirect(reverse("pl2spread:index")) # POST successful login attempt to INDEX - pl2spread
 
     except KeyError as KE:
@@ -65,10 +64,21 @@ def spotify_callback(request):
         return Http404("Authentication failed.")
 
 def index(request):
+
     context = {
         "all_field_names": all_field_names[1:],
+        "action": "",
+        "result": 0
     }
+    return render(request, "pl2spread/index.html", context)
 
+def callback_action(request, action, result):
+
+    context = {
+        "all_field_names": all_field_names[1:],
+        "action": action,
+        "result": "success" if result else "failed"
+    }
     return render(request, "pl2spread/index.html", context)
 
 # Handles tools requests and redirects to main tools page.
@@ -78,11 +88,8 @@ def complete_action(request):
     if len(request.POST) == 0:
         return Http404("No data submitted to the server. Try submitting the form again!")
     try:
-        django.debug(str(request.session))
 
         auth_manager = spotify_oauth2(request)
-
-        django.debug(str(request.session))
 
         posted_url = request.POST["playlist_url"]
         r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
@@ -97,22 +104,24 @@ def complete_action(request):
         action = request.POST["action"]
 
         # (TODO: Should be a switch statement here)
-        if action == "shuffle":
-            result = ManagePlaylist.shuffle_playlist(auth_manager, py_url)
-            if result:
-                return HttpResponse("Successfully shuffled playlist.")
-            else:
-                return HttpResponse("Unable to shuffle playlist for some reason.")
+        if action in ["shuffle", "order-artistalbum", "order-artist"]:
+            try:
+                token_info = request.session['token_info']
+            except KeyError:
+                django.debug("Token not found in the session")
+                return HttpResponseRedirect(reverse("pl2spread:authorize"))
 
-        elif action == "order-artistalbum":
-            result = ManagePlaylist.sort_playlist_by_artistalbum(auth_manager, py_url)
-            if result:
-                return HttpResponse("Successfully sorted playlist by artist name and album.")
+            if action == "shuffle":
+                action_success = ManagePlaylist.shuffle_playlist(auth_manager, py_url)
+                return HttpResponseRedirect(reverse("pl2spread:callback_action", kwargs={"action": action, "result": int(action_success)}))
 
-        elif action == "order-artist":
-            result = ManagePlaylist.sort_playlist_by_artist(auth_manager, py_url)
-            if result:
-                return HttpResponse("Successfully sorted playlist by artist name.")
+            if action == "order-artistalbum":
+                action_success = ManagePlaylist.sort_playlist_by_artistalbum(auth_manager, py_url)
+                return HttpResponseRedirect(reverse("pl2spread:callback_action", kwargs={"action": action, "result": int(action_success)}))
+
+            if action == "order-artist":
+                action_success = ManagePlaylist.sort_playlist_by_artist(auth_manager, py_url)
+                return HttpResponseRedirect(reverse("pl2spread:callback_action", kwargs={"action": action, "result": int(action_success)}))
 
         elif action == "create-csv":
             return create_spreadsheet(auth_manager, request)
@@ -122,11 +131,8 @@ def complete_action(request):
 
     except Exception as err:
         django.debug(err)
-        #return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
-        raise err
-
-    context = {}
-    return render(request, "pl2spread/action_redirect.html", context)
+        return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
+        #raise err
 
 def create_spreadsheet(request):
 
