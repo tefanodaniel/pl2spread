@@ -2,57 +2,57 @@
 <html lang="en-US">
   {% load static %}
   <script src="{% static 'pl2spread/script.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'pl2spread/style.css' %}">
   <head>
-    <meta charset="utf-8" />
     <title>Pl2Spread - Home</title>
+    <meta name="viewport" content="width=device-width" charset="utf-8"/>
   </head>
+
   <body>
-    <h1>Playlist 2 Spreadsheet</h1>
+    <div class="page">
+        <h1>Playlist 2 Spreadsheet</h1>
 
         {% if action %} {{ action|capfirst }} was a {{ result }}.{% endif %}
 
         <form name="pl2spread_form" id="pl2spread_form" action="{% url 'pl2spread:complete_action' %}" method="post">
 
             {% csrf_token %}
-            <div class="actions-select"></div>
-            <label for="action">Choose an action:</label>
-            <select name="action" id="actions-select" required>
-                <option value="shuffle">Shuffle playlist</option>
-                <option value="order-artistalbum">Order by Artistname and Album</option>
-                <option value="order-artist">Order by Artistname</option>
-                <option value="create-csv">Create .CSV</option>
-            </select>
-
-            <label for="playlist_url">Spotify playlist link&#9;</label>
-
-            <input type="text" name="playlist_url" id="playlist-url" required
-                value="https://open.spotify.com/playlist/6HH3ypeMQxI6QEWNwxk5NJ"><br>
-            <div class="spreadsheet-fields">
-                <p style="margin-bottom:0px">fields to include on spreadsheet:</p>
+            <div id="enter-playlist-url">
+                <label class="text" for="playlist_url">Link to Spotify playlist</label>
+                <input type="text" name="playlist_url" id="playlist-url" required
+                    value="https://open.spotify.com/playlist/6HH3ypeMQxI6QEWNwxk5NJ">
+            </div>
+            <div id="actions-select" style="display:inline">
+                <label class="text" for="action">Choose an action:</label>
+                <select class="button" name="action" id="actions-select-btn" required>
+                <option class="text" value="shuffle">Shuffle playlist</option>
+                <option class="text" value="order-artistalbum">Order by Artistname and Album</option>
+                <option class="text" value="order-artist">Order by Artistname</option>
+                <option class="text" value="create-csv">Create .CSV</option>
+                </select>
+            </div>
+            <input class="button" id="spreadsheet-btn" type="submit" value="Go">
+            <div id="spreadsheet-fields">
+                <p class="text" style="margin-top:5px margin-bottom:0px">Fields to include on spreadsheet:</p>
                                     <fieldset style="width:25%">
                                         <input type="checkbox" class="sheet_field" name="track_title" id="field_0" value="track_title" checked disabled>
-                                        <label for="field_0">track_title</label><br>
+                                        <label class="text" for="field_0">track_title</label><br>
                                         {% for field in all_field_names %}
                                         <input type="checkbox" class="sheet_field" name="{{field}}" id="field_{{ forloop.counter|add:"1" }}" value="{{field}}">
-                                        <label for="field_{{ forloop.counter|add:"1" }}">{{ field }}</label><br>
+                                        <label class="text" for="field_{{ forloop.counter|add:"1" }}">{{ field }}</label><br>
                                         {% endfor %}
                                     </fieldset>
             </div>
-            <input type="submit" value="Go">
         </form>
-
-        <ul id='action-descriptions'>
-            <li>
-                <p>Shuffle playlist:   Returns a playlist with items re-arranged in a random order.</p></li>
-            <li>
-                <p>Order playlist by Artist name and Album:   Returns a playlist with items sorted by artist name, grouping songs from the same album together.</p></li>
-            <li>
-                <p>Order playlist by Artist name:   Returns a playlist with items sorted by artist name.</p></li>
-            <li>
-                <p>Create .CSV containing playlist information.</p></li>
-        </ul>
-
-        <p>Note: Due to restrictions of the Spotify API, this tool does not work with non-user (ie: Spotify-owned) playlists.</p>
-
+        <div>
+            <ul id='action-descriptions'>
+                <li><p class="text">Shuffle playlist:   Returns a playlist with items re-arranged in a random order.</p></li>
+                <li><p class="text">Order playlist by Artist name and Album:   Returns a playlist with items sorted by artist name, grouping songs from the same album together.</p></li>
+                <li><p class="text">Order playlist by Artist name:   Returns a playlist with items sorted by artist name.</p></li>
+                <li><p class="text">Create .CSV containing playlist information.</p></li>
+            </ul>
+        </div>
+        <p class="text">Note: Due to restrictions of the Spotify API, this tool does not work with non-user (ie: Spotify-owned) playlists.</p>
+    </div>
   </body>
 </html>

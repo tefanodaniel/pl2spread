@@ -17,7 +17,6 @@ import re
 
 import requests
 
-from pl2spread.playlist2spreadsheet import Playlist2Spreadsheet, read_secrets_file
 import pl2spread.manageplaylist as ManagePlaylist
 
 #logger = logging.getLogger("pl2spread.views")
@@ -39,7 +38,6 @@ def generate_random_string(length):
     return ''.join(random.choices(characters, k=length))
 
 def spotify_oauth2(request): # utility function - not a view
-
     scopes = "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public"
 
     oauth = SpotifyOAuth(client_id=ManagePlaylist.client_id,
@@ -73,7 +71,6 @@ def index(request):
     return render(request, "pl2spread/index.html", context)
 
 def callback_action(request, action, result):
-
     context = {
         "all_field_names": all_field_names[1:],
         "action": action,
@@ -83,13 +80,11 @@ def callback_action(request, action, result):
 
 # Handles tools requests and redirects to main tools page.
 def complete_action(request):
-
     # Validate request parameters
     if len(request.POST) == 0:
         return Http404("No data submitted to the server. Try submitting the form again!")
     try:
-
-        auth_manager = spotify_oauth2(request)
+        auth_manager = spotify_oauth2(request) # verify what this does when it fails... ie the application is not authorized already
 
         posted_url = request.POST["playlist_url"]
         r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
@@ -102,8 +97,6 @@ def complete_action(request):
 
         # Complete tool action based on request type.
         action = request.POST["action"]
-
-        # (TODO: Should be a switch statement here)
         if action in ["shuffle", "order-artistalbum", "order-artist"]:
             try:
                 token_info = request.session['token_info']
@@ -124,7 +117,16 @@ def complete_action(request):
                 return HttpResponseRedirect(reverse("pl2spread:callback_action", kwargs={"action": action, "result": int(action_success)}))
 
         elif action == "create-csv":
-            return create_spreadsheet(auth_manager, request)
+
+            if False: #WIP
+                return HttpResponseRedirect(reverse("pl2spread:callback_action", kwargs={"action": action, "result": int(0)}))
+            else:
+                params = "" + f"track_title={all_field_names[0]}?" # bc should always be returned with sheet
+                for k,v in request.POST.items():
+                    if k not in ["playlist_url", "csrftoken", "csrfmiddlewaretoken"]:
+                        params += k + "=" + v + "?"
+
+                return HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": py_url, "params": params}))
 
         else:
             return HttpResponse("No tool action selected before form submission.")
@@ -134,60 +136,24 @@ def complete_action(request):
         return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
         #raise err
 
-def create_spreadsheet(request):
-
-    if len(request.POST) == 0:
-        return Http404("No data submitted to the server. Try submitting the form again!")
-
-    try:
-        field_value = request.POST["playlist_url"]
-        r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
-        m = r.match(field_value)
-        py_url = ""
-        if m:
-            py_url = m.group(1)
-        else:
-            #raise Http404("Not a valid URL to a Spotify playlist.")
-            return HttpResponse("Not a valid URL to a Spotify playlist. (%s)" % field_value)
-
-        params = "" + f"track_title={all_field_names[0]}?"
-        for k,v in request.POST.items():
-            if k not in ["playlist_url", "csrftoken", "csrfmiddlewaretoken"]:
-                params += k + "=" + v + "?"
-
-        return HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": py_url, "params": params}))
-
-    except Exception as err:
-        return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
-
 def spreadsheet(request, py_url, params):
-
-    filepath = f"pl2spread/tmp/data-{py_url}.csv"
-    client_id, client_secret = read_secrets_file("/home/tefanodaniel/mysite/pl2spread/secrets.txt")
-
     try:
         fields=[]
         for kv in params.split("?"): # key=value
             fields.append(kv.split("=")[0])
 
-        p = Playlist2Spreadsheet(client_id, client_secret)
-        playlist = p.export(py_url, filename=f"{settings.STATIC_ROOT}/{filepath}", fieldlist=fields)
-
-    except SpotifyOauthError as err:
-        # return error view
-        return HttpResponse("We experienced a back-end systems error when accessing the Spotify application.")
-
-    except SpotifyException as err:
-        return HttpResponse("We experienced a back-end systems error when accessing the Spotify application.")
+        temp_filepath = f"{settings.STATIC_ROOT}/pl2spread/tmp/data-{py_url}.csv"
+        auth_manager = spotify_oauth2(request)
+        playlist_obj = ManagePlaylist.export_and_get_datatable(auth_manager, py_url, filename=temp_filepath, fieldlist=fields)
 
     except Exception as err:
-        return HttpResponse("Our apologies for the inconvenience, an error has occurred with the application.")
+        return HttpResponse(f"Our apologies for the inconvenience, an error has occurred with the application.\n\n{err}")
 
     else:
         context = {
-            "playlist_info": playlist["metadata"],
-            "table_headers": playlist["data"][0]["fields"][:-1], # getting an empty item for an additional entry in the table headers list... hacky fix
-            "table_entries": playlist["data"][1:],
-            "filepath": filepath
+            "playlist_info": playlist_obj["metadata"],
+            "table_headers": playlist_obj["data"][0]["fields"][:-1], # getting an empty item for an additional entry in the table headers list... hacky fix
+            "table_entries": playlist_obj["data"][1:],
+            "filepath": temp_filepath
         }
         return render(request, "pl2spread/spreadsheet.html", context)
