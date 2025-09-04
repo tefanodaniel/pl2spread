@@ -125,10 +125,10 @@ def complete_action(request):
                 for k,v in request.POST.items():
                     if k not in ["playlist_url", "csrftoken", "csrfmiddlewaretoken"]:
                         params += k + "=" + v + "?"
-
                 return HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": py_url, "params": params}))
 
         else:
+            django.debug(err)
             return HttpResponse("No tool action selected before form submission.")
 
     except Exception as err:
@@ -147,6 +147,7 @@ def spreadsheet(request, py_url, params):
         playlist_obj = ManagePlaylist.export_and_get_datatable(auth_manager, py_url, filename=temp_filepath, fieldlist=fields)
 
     except Exception as err:
+        django.debug(err)
         return HttpResponse(f"Our apologies for the inconvenience, an error has occurred with the application.\n\n{err}")
 
     else:
