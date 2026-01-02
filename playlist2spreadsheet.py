@@ -21,8 +21,8 @@ def make_playlist_model(auth_manager, playlist_id):
                                       fields='items.track(name,artists(name,id),album(name,release_date),popularity),total',
                                       additional_types=['track'])
 
-        except spotipy.SpotifyOauthError as err: # possible
-            raise spotipy.SpotifyOauthError(err.message, err.error, err.error_description)
+        except spotipy.SpotifyOauthError as err:
+            raise spotipy.SpotifyOauthError(err.error, err.error_description) # authorization failed 
 
         except spotipy.SpotifyException as err:
             raise spotipy.SpotifyException(err.http_status, err.code, err.msg, err.reason)

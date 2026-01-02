@@ -1,8 +1,69 @@
 <!doctype html>
 <html lang="en-US">
-  {% load static %}
+  <!-- {% load static %} -->
   <script src="{% static 'pl2spread/script.js' %}"></script>
-  <link rel="stylesheet" href="{% static 'pl2spread/style.css' %}">
+  <!-- <link rel="stylesheet" href="{% static 'pl2spread/style.css' %}"> -->
+  <style>
+        @media only screen and (max-width: 800px) {
+            .page {
+                margin: 0 auto;
+                width: 80%;
+                align-self: center;
+            }
+        }
+
+        @media only screen and (min-width: 801px) {
+            
+            .page {
+                margin: 0 auto;
+                width: 65%;
+                align-self: center;
+            }
+
+            h1 {
+                text-align: center;
+            }
+        }
+
+        div {
+            margin-bottom: 15px;
+            background-color: white;
+            opacity: 0.95;
+        }
+
+        body {
+            background-image: url("cobweb-black.png");
+        }
+
+        h1 {
+            font-family: 'Arial', 'Helvetica', 'sans-serif';
+        }
+
+        .text {
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif
+        }
+
+        #playlist-url {
+            height: 25px;
+            width: 400px;
+        }
+
+        #actions-select-btn {
+            display: inline;
+            margin-top: 5px;
+            height: 25px;
+        }
+
+        #popup-action-result {
+            color:rgb(18, 15, 190);
+        }
+
+        #submit {
+            height: 25px;
+            width: 100px;
+        }
+  </style>
+  
   <head>
     <title>Pl2Spread - Home</title>
     <meta name="viewport" content="width=device-width" charset="utf-8"/>

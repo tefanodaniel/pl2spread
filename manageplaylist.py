@@ -10,7 +10,7 @@ logger = logging.getLogger("django")
 
 client_id="5469d6f0530444b094b670becf1ea407"
 client_secret="5b86a619674f4473a522c8bbcdb9c557"
-redirect_uri = "https://tefanodaniel.pythonanywhere.com/pl2spread/authorize/callback"
+redirect_uri = "http://127.0.0.1:8000/pl2spread/authorize/callback"
 
 PLAYLIST_MAX_SONG_COUNT=10000
 MAX_BUFFER_SIZE = 50

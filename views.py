@@ -54,7 +54,8 @@ def spotify_login(request):
 def spotify_callback(request):
     try:
         code = request.GET["code"]
-        auth_manager = spotify_oauth2(request).get_access_token(code)
+        request.session["token"] = spotify_oauth2(request).get_access_token(code)
+
         return HttpResponseRedirect(reverse("pl2spread:index")) # POST successful login attempt to INDEX - pl2spread
 
     except KeyError as KE:
@@ -62,7 +63,6 @@ def spotify_callback(request):
         return Http404("Authentication failed.")
 
 def index(request):
-
     context = {
         "all_field_names": all_field_names[1:],
         "action": "",
@@ -84,8 +84,6 @@ def complete_action(request):
     if len(request.POST) == 0:
         return Http404("No data submitted to the server. Try submitting the form again!")
     try:
-        auth_manager = spotify_oauth2(request) # verify what this does when it fails... ie the application is not authorized already
-
         posted_url = request.POST["playlist_url"]
         r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
         m = r.match(posted_url)
@@ -97,9 +95,12 @@ def complete_action(request):
 
         # Complete tool action based on request type.
         action = request.POST["action"]
-        if action in ["shuffle", "order-artistalbum", "order-artist"]:
+        if action in ["shuffle", "order-artistalbum", "order-artist", "create-csv"]:
+            
             try:
                 token_info = request.session['token_info']
+                auth_manager = spotify_oauth2(request)
+
             except KeyError:
                 django.debug("Token not found in the session")
                 return HttpResponseRedirect(reverse("pl2spread:authorize"))
@@ -116,15 +117,11 @@ def complete_action(request):
                 action_success = ManagePlaylist.sort_playlist_by_artist(auth_manager, py_url)
                 return HttpResponseRedirect(reverse("pl2spread:callback_action", kwargs={"action": action, "result": int(action_success)}))
 
-        elif action == "create-csv":
-
-            if False: #WIP
-                return HttpResponseRedirect(reverse("pl2spread:callback_action", kwargs={"action": action, "result": int(0)}))
-            else:
+            if action == "create-csv":
                 params = "" + f"track_title={all_field_names[0]}?" # bc should always be returned with sheet
                 for k,v in request.POST.items():
                     if k not in ["playlist_url", "csrftoken", "csrfmiddlewaretoken"]:
-                        params += k + "=" + v + "?"
+                       params += k + "=" + v + "?"
                 return HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": py_url, "params": params}))
 
         else:
@@ -147,14 +144,14 @@ def spreadsheet(request, py_url, params):
         playlist_obj = ManagePlaylist.export_and_get_datatable(auth_manager, py_url, filename=temp_filepath, fieldlist=fields)
 
     except Exception as err:
-        django.debug(err)
+        django.debug(err) # if no params or filepath corrupted
         return HttpResponse(f"Our apologies for the inconvenience, an error has occurred with the application.\n\n{err}")
 
-    else:
-        context = {
-            "playlist_info": playlist_obj["metadata"],
-            "table_headers": playlist_obj["data"][0]["fields"][:-1], # getting an empty item for an additional entry in the table headers list... hacky fix
-            "table_entries": playlist_obj["data"][1:],
-            "filepath": temp_filepath
-        }
-        return render(request, "pl2spread/spreadsheet.html", context)
+    
+    context = {
+        "playlist_info": playlist_obj["metadata"],
+        "table_headers": playlist_obj["data"][0]["fields"][:-1], # getting an empty item for an additional entry in the table headers list... hacky fix
+        "table_entries": playlist_obj["data"][1:],
+        "filepath": temp_filepath
+    }
+    return render(request, "pl2spread/spreadsheet.html", context)
