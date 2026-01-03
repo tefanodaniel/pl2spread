@@ -1,4 +1,3 @@
-# from django.conf import settings
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import random
@@ -7,10 +6,6 @@ import csv
 import logging
 
 logger = logging.getLogger("django")
-
-client_id="5469d6f0530444b094b670becf1ea407"
-client_secret="5b86a619674f4473a522c8bbcdb9c557"
-redirect_uri = "http://127.0.0.1:8000/pl2spread/authorize/callback"
 
 PLAYLIST_MAX_SONG_COUNT=10000
 MAX_BUFFER_SIZE = 50
@@ -222,7 +217,6 @@ def export_and_get_datatable(auth_manager, playlist_id, filename="", fieldlist=[
 def shuffle_playlist(auth_manager, playlistId):
 
     try:
-        #client_id, client_secret = read_secrets_file("secrets.txt")
         spotify = spotipy.Spotify(auth_manager=auth_manager)
 
         res = spotify.playlist_items(playlistId, fields="next,items(track(id))")

@@ -37,12 +37,22 @@ def generate_random_string(length):
     characters = string.ascii_letters + string.digits  # Letters and digits
     return ''.join(random.choices(characters, k=length))
 
+def read_secrets_file(filename):
+    with open(filename, "r") as file:
+        line = file.readline()
+        first = line.strip().split("=")[1]
+        line = file.readline()
+        second = line.strip().split("=")[1]
+    return (first, second)
+
 def spotify_oauth2(request): # utility function - not a view
     scopes = "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public"
+    redirect_uri = "http://127.0.0.1:8000/pl2spread/authorize/callback"
+    client_id, client_secret = read_secrets_file("pl2spread/secrets")
 
-    oauth = SpotifyOAuth(client_id=ManagePlaylist.client_id,
-                                client_secret=ManagePlaylist.client_secret,
-                                redirect_uri=ManagePlaylist.redirect_uri,
+    oauth = SpotifyOAuth(client_id=client_id,
+                                client_secret=client_secret,
+                                redirect_uri=redirect_uri,
                                 scope=scopes,
                                 cache_handler=DjangoSessionCacheHandler(request))
     return oauth
@@ -56,7 +66,7 @@ def spotify_callback(request):
         code = request.GET["code"]
         request.session["token"] = spotify_oauth2(request).get_access_token(code)
 
-        return HttpResponseRedirect(reverse("pl2spread:index")) # POST successful login attempt to INDEX - pl2spread
+        return HttpResponseRedirect(reverse("pl2spread:index"))
 
     except KeyError as KE:
         django.debug(KE)
@@ -80,10 +90,11 @@ def callback_action(request, action, result):
 
 # Handles tools requests and redirects to main tools page.
 def complete_action(request):
-    # Validate request parameters
-    if len(request.POST) == 0:
+    
+    if len(request.POST) == 0: # Validate request parameters
         return Http404("No data submitted to the server. Try submitting the form again!")
     try:
+        action = request.POST["action"]
         posted_url = request.POST["playlist_url"]
         r = re.compile(r"^.*[:\/]playlist[:\/]([a-zA-Z0-9]+).*$")
         m = r.match(posted_url)
@@ -91,12 +102,10 @@ def complete_action(request):
         if m:
             py_url = m.group(1)
         else:
-            return HttpResponse("Not a valid URL to a Spotify playlist. (%s)" % posted_url)
+            # This should be an actual page with a link back to the home page.
+            return HttpResponse("Not a valid URL or URI to a Spotify playlist. (%s)" % posted_url)
 
-        # Complete tool action based on request type.
-        action = request.POST["action"]
-        if action in ["shuffle", "order-artistalbum", "order-artist", "create-csv"]:
-            
+        if action in ["shuffle", "order-artistalbum", "order-artist", "create-csv"]: # Complete tool action based on request type.
             try:
                 token_info = request.session['token_info']
                 auth_manager = spotify_oauth2(request)
@@ -120,7 +129,7 @@ def complete_action(request):
             if action == "create-csv":
                 params = "" + f"track_title={all_field_names[0]}?" # bc should always be returned with sheet
                 for k,v in request.POST.items():
-                    if k not in ["playlist_url", "csrftoken", "csrfmiddlewaretoken"]:
+                    if k not in ["playlist_url", "csrftoken", "csrfmiddlewaretoken", "action"]:
                        params += k + "=" + v + "?"
                 return HttpResponseRedirect(reverse("pl2spread:spreadsheet", kwargs={"py_url": py_url, "params": params}))
 
@@ -147,7 +156,6 @@ def spreadsheet(request, py_url, params):
         django.debug(err) # if no params or filepath corrupted
         return HttpResponse(f"Our apologies for the inconvenience, an error has occurred with the application.\n\n{err}")
 
-    
     context = {
         "playlist_info": playlist_obj["metadata"],
         "table_headers": playlist_obj["data"][0]["fields"][:-1], # getting an empty item for an additional entry in the table headers list... hacky fix
